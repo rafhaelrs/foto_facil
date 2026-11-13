@@ -19,6 +19,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Aceitar licenças do Android SDK
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Baixar bibliotecas locais para funcionamento 100% Offline
         run: |
           mkdir -p libs
@@ -36,15 +40,15 @@ jobs:
           cp -r icons android/app/src/main/assets/
           cp -r libs android/app/src/main/assets/
 
-      - name: Configurar Gradle 8.2
+      - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.2'
 
-      - name: Compilar o APK
+      - name: Gerar Wrapper e Compilar APK
         run: |
           cd android
-          gradle assembleDebug --stacktrace --no-daemon
+          gradle wrapper --gradle-version 8.2
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
 
       - name: Publicar o APK pronto para Download
         uses: actions/upload-artifact@v4
