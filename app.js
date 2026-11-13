@@ -1,6 +1,6 @@
 /**
- * Sara Foto Fácil - Lógica Principal
- * Foco em simplicidade, leveza e suporte a aparelhos antigos.
+ * Sara Foto Fácil - Lógica Principal Atualizada
+ * Foco em simplicidade, leveza e suporte completo a arquivos recebidos por WhatsApp/Downloads/HEIC.
  */
 
 // Estado da Aplicação
@@ -14,7 +14,11 @@ const state = {
 
 // Elementos do DOM
 const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
+const fileInputAll = document.getElementById('file-input-all');
+const fileInputGallery = document.getElementById('file-input-gallery');
+const btnPickFiles = document.getElementById('btn-pick-files');
+const btnPickGallery = document.getElementById('btn-pick-gallery');
+
 const optionsSection = document.getElementById('options-section');
 const photosSection = document.getElementById('photos-section');
 const photosList = document.getElementById('photos-list');
@@ -40,7 +44,6 @@ const closeIosGuide = document.getElementById('close-ios-guide');
 
 let deferredPrompt = null;
 
-// Escuta evento de instalação em navegadores compatíveis (Chrome, Edge, Android)
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
@@ -61,13 +64,12 @@ if (btnInstall) {
   });
 }
 
-// Detecção suave para iPhone / iPad (Safari não tem beforeinstallprompt padrão)
+// Guia suave para iPhone / iPad
 function checkIosGuide() {
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
   
   if (isIos && !isStandalone && iosGuide) {
-    // Se ainda não dispensou nessa sessão
     if (!sessionStorage.getItem('iosGuideDismissed')) {
       iosGuide.classList.remove('hidden');
     }
@@ -81,30 +83,56 @@ if (closeIosGuide) {
   });
 }
 
-// Registro do Service Worker (Offline total)
+// Registro do Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Sara Foto Fácil: Modo Offline Pronto!'))
-      .catch((err) => console.log('Service Worker não registrado:', err));
+      .then(() => console.log('Sara Foto Fácil: Modo Offline Ativo'))
+      .catch((err) => console.log('Service Worker erro:', err));
   });
 }
 
 checkIosGuide();
 
 // ========================================================
-// 2. Seleção de Fotos (Clique e Arrastar)
+// 2. Seleção de Fotos (Arquivos vs Galeria vs Arrastar)
 // ========================================================
 
-dropZone.addEventListener('click', () => fileInput.click());
-btnAddMore.addEventListener('click', () => fileInput.click());
+// Botão 1: Arquivos / WhatsApp / Downloads (Abre o gerenciador completo onde fotos HEIC e documentos aparecem sem filtro)
+if (btnPickFiles) {
+  btnPickFiles.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInputAll.click();
+  });
+}
 
-fileInput.addEventListener('change', (e) => {
+// Botão 2: Galeria convencional
+if (btnPickGallery) {
+  btnPickGallery.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInputGallery.click();
+  });
+}
+
+// Botão "+ Adicionar mais fotos"
+if (btnAddMore) {
+  btnAddMore.addEventListener('click', () => {
+    fileInputAll.click();
+  });
+}
+
+// Escuta os dois inputs
+fileInputAll.addEventListener('change', (e) => {
   handleFiles(e.target.files);
-  fileInput.value = ''; // Permite selecionar os mesmos arquivos novamente se quiser
+  fileInputAll.value = '';
 });
 
-// Suporte a Arrastar e Soltar (Drag & Drop)
+fileInputGallery.addEventListener('change', (e) => {
+  handleFiles(e.target.files);
+  fileInputGallery.value = '';
+});
+
+// Suporte a Arrastar e Soltar (Computador)
 ['dragenter', 'dragover'].forEach(eventName => {
   dropZone.addEventListener(eventName, (e) => {
     e.preventDefault();
@@ -128,26 +156,35 @@ dropZone.addEventListener('drop', (e) => {
   }
 });
 
+/**
+ * Trata os arquivos selecionados garantindo que formatos não indexados
+ * pela galeria (como HEIC no Android) sejam aceitos normalmente!
+ */
 function handleFiles(fileList) {
   if (!fileList || fileList.length === 0) return;
 
-  const newFiles = Array.from(fileList).filter(file => {
-    // Valida extensões ou tipos de imagem comuns
-    const name = file.name.toLowerCase();
-    const isImage = file.type.startsWith('image/') || 
-                    name.endsWith('.heic') || 
-                    name.endsWith('.heif') || 
-                    name.endsWith('.webp') ||
-                    name.endsWith('.dng');
-    return isImage;
+  const validExtensions = ['heic', 'heif', 'jpg', 'jpeg', 'png', 'webp', 'dng', 'bmp', 'tiff', 'tif', 'avif'];
+  const acceptedFiles = [];
+  const rejectedNames = [];
+
+  Array.from(fileList).forEach(file => {
+    const ext = getExtension(file.name).toLowerCase();
+    const isImageByMime = file.type && file.type.startsWith('image/');
+    const isImageByExt = validExtensions.includes(ext);
+
+    if (isImageByExt || isImageByMime) {
+      acceptedFiles.push(file);
+    } else {
+      rejectedNames.push(file.name);
+    }
   });
 
-  if (newFiles.length === 0) {
-    alert('Por favor, selecione arquivos de imagem válidos (fotos).');
+  if (rejectedNames.length > 0 && acceptedFiles.length === 0) {
+    alert(`O arquivo selecionado (${rejectedNames.join(', ')}) não parece ser uma foto. Por favor, escolha fotos ou imagens.`);
     return;
   }
 
-  newFiles.forEach(file => {
+  acceptedFiles.forEach(file => {
     const ext = getExtension(file.name);
     state.files.push({
       id: 'photo_' + Math.random().toString(36).substr(2, 9),
@@ -157,7 +194,7 @@ function handleFiles(fileList) {
       originalSize: formatBytes(file.size),
       convertedBlob: null,
       convertedUrl: null,
-      status: 'waiting', // waiting, converting, done, error
+      status: 'waiting',
       error: null
     });
   });
@@ -184,14 +221,12 @@ function updateUI() {
   photosSection.classList.remove('hidden');
   photosCountTitle.textContent = `Fotos Selecionadas (${total})`;
 
-  // Renderiza a lista de fotos
   photosList.innerHTML = '';
   state.files.forEach(item => {
     const el = createPhotoCard(item);
     photosList.appendChild(el);
   });
 
-  // Atualiza botão de download em massa
   const convertedCount = state.files.filter(f => f.status === 'done').length;
   if (convertedCount > 1) {
     downloadAllContainer.classList.remove('hidden');
@@ -222,7 +257,6 @@ function createPhotoCard(item) {
     statusBadgeHtml = `<span class="photo-status-badge status-error">Erro</span>`;
   }
 
-  // Se já tiver convertedUrl, mostra imagem prévia; caso contrário, ícone amigável
   let previewHtml = `<div class="photo-preview">🖼️</div>`;
   if (item.convertedUrl) {
     previewHtml = `<div class="photo-preview"><img src="${item.convertedUrl}" alt="Foto"></div>`;
@@ -264,7 +298,6 @@ formatCards.forEach(card => {
 
 // Limpar lista
 btnClear.addEventListener('click', () => {
-  // Revoga URLs criadas na memória para não ocupar RAM em aparelhos antigos
   state.files.forEach(f => {
     if (f.convertedUrl) URL.revokeObjectURL(f.convertedUrl);
   });
@@ -273,7 +306,7 @@ btnClear.addEventListener('click', () => {
 });
 
 // ========================================================
-// 5. Motor de Conversão (Pensado para aparelhos antigos)
+// 5. Motor de Conversão Suave
 // ========================================================
 
 btnConvertAll.addEventListener('click', async () => {
@@ -287,11 +320,9 @@ btnConvertAll.addEventListener('click', async () => {
   const total = state.files.length;
   let completed = 0;
 
-  // Processa uma por uma para NUNCA travar a memória de celular ou notebook antigo!
   for (let i = 0; i < total; i++) {
     const item = state.files[i];
 
-    // Atualiza status do item
     item.status = 'converting';
     updateSingleCard(item);
 
@@ -313,18 +344,15 @@ btnConvertAll.addEventListener('click', async () => {
     completed++;
     updateSingleCard(item);
 
-    // Pequeno alívio de 15ms para o processador do aparelho respirar e renderizar a tela liso
-    await new Promise(resolve => setTimeout(resolve, 15));
+    await new Promise(resolve => setTimeout(resolve, 20));
   }
 
-  // Finalização
   progressBarFill.style.width = '100%';
   progressText.textContent = `Tudo pronto! ${completed} foto(s) convertida(s).`;
   state.isConverting = false;
   btnConvertAll.disabled = false;
   convertBtnText.textContent = 'Converter Fotos';
 
-  // Se for apenas 1 foto, já baixa automaticamente para facilitar a vida dela!
   if (total === 1 && state.files[0].status === 'done') {
     downloadSingle(state.files[0].id);
   } else if (total > 1) {
@@ -332,7 +360,6 @@ btnConvertAll.addEventListener('click', async () => {
   }
 });
 
-// Atualiza apenas o cartão de uma foto específica na tela (evita recriar a lista toda)
 function updateSingleCard(item) {
   const existingCard = document.getElementById(item.id);
   if (!existingCard) return;
@@ -342,15 +369,14 @@ function updateSingleCard(item) {
 }
 
 /**
- * Converte um arquivo de imagem para o formato desejado (JPG ou PNG)
+ * Converte um arquivo de imagem para JPG ou PNG
  */
 async function convertImage(file, targetMime, quality) {
-  const isHeic = file.name.toLowerCase().endsWith('.heic') || 
-                 file.name.toLowerCase().endsWith('.heif') ||
-                 file.type.includes('heic') || 
-                 file.type.includes('heif');
+  const ext = getExtension(file.name).toLowerCase();
+  const isHeic = ext === 'heic' || ext === 'heif' || 
+                 (file.type && (file.type.includes('heic') || file.type.includes('heif')));
 
-  // Caso 1: Foto do iPhone em formato HEIC
+  // Caso 1: HEIC / HEIF
   if (isHeic) {
     if (typeof heic2any !== 'function') {
       throw new Error('A biblioteca de HEIC ainda está carregando.');
@@ -362,14 +388,13 @@ async function convertImage(file, targetMime, quality) {
       quality: quality
     });
 
-    // heic2any pode retornar um array se o HEIC contiver múltiplas fotos em sequência
     if (Array.isArray(conversionResult)) {
       return conversionResult[0];
     }
     return conversionResult;
   }
 
-  // Caso 2: Qualquer outro formato (JPG, PNG, WebP, etc.) via Canvas HTML5 nativo
+  // Caso 2: Outros formatos (JPG, PNG, WebP, etc.)
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -382,7 +407,6 @@ async function convertImage(file, targetMime, quality) {
         canvas.height = img.naturalHeight || img.height;
 
         const ctx = canvas.getContext('2d');
-        // Se for converter para JPG, preenche fundo branco para não ficar com fundo preto caso tenha transparência
         if (targetMime === 'image/jpeg') {
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -393,7 +417,7 @@ async function convertImage(file, targetMime, quality) {
           if (blob) {
             resolve(blob);
           } else {
-            reject(new Error('Falha ao gerar a foto final'));
+            reject(new Error('Falha ao processar imagem'));
           }
         }, targetMime, quality);
       } catch (e) {
@@ -403,7 +427,7 @@ async function convertImage(file, targetMime, quality) {
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('Não foi possível ler a imagem.'));
+      reject(new Error('Não foi possível ler esta foto.'));
     };
 
     img.src = url;
@@ -414,7 +438,6 @@ async function convertImage(file, targetMime, quality) {
 // 6. Download das Fotos
 // ========================================================
 
-// Baixar uma única foto
 window.downloadSingle = function(photoId) {
   const item = state.files.find(f => f.id === photoId);
   if (!item || !item.convertedBlob) return;
@@ -425,10 +448,9 @@ window.downloadSingle = function(photoId) {
   triggerDownload(item.convertedBlob, fileName);
 };
 
-// Baixar todas as fotos em um único arquivo .ZIP
 btnDownloadZip.addEventListener('click', async () => {
   if (typeof JSZip === 'undefined') {
-    alert('Preparando biblioteca de compressão... Aguarde 2 segundos.');
+    alert('Preparando arquivo zip... Aguarde 2 segundos.');
     return;
   }
 
@@ -439,7 +461,7 @@ btnDownloadZip.addEventListener('click', async () => {
     const zip = new JSZip();
     const folder = zip.folder('Sara_Fotos_Prontas');
 
-    state.files.forEach((item, index) => {
+    state.files.forEach((item) => {
       if (item.status === 'done' && item.convertedBlob) {
         const baseName = removeExtension(item.name);
         const fileName = `${baseName}.${state.outputExt}`;
@@ -470,7 +492,7 @@ function triggerDownload(blob, fileName) {
 }
 
 // ========================================================
-// Funções Utilitárias
+// Utilitários
 // ========================================================
 
 function getExtension(filename) {

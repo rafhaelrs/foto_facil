@@ -23,13 +23,13 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Banner de Instalação PWA (Aparece no celular ou notebook quando disponível) -->
+  <!-- Banner de Instalação PWA -->
   <div id="install-banner" class="install-banner hidden">
     <div class="install-info">
       <span class="install-icon">📲</span>
       <div>
         <strong>Instalar Aplicativo</strong>
-        <p>Acesse direto pelo ícone na tela sem precisar de link!</p>
+        <p>Coloque o ícone na sua tela para abrir com 1 toque!</p>
       </div>
     </div>
     <button id="btn-install" class="btn-install-action">Instalar</button>
@@ -51,22 +51,42 @@
         <div class="logo-icon">📸</div>
         <div>
           <h1 class="app-title">Sara Foto Fácil</h1>
-          <p class="app-subtitle">Transforme qualquer foto em JPG ou PNG sem esforço</p>
+          <p class="app-subtitle">Transforme qualquer foto em JPG ou PNG sem complicação</p>
         </div>
       </div>
     </header>
 
-    <!-- Área de Envio / Seleção -->
+    <!-- Inputs ocultos: um amplo para arquivos gerais/WhatsApp/HEIC e outro para Galeria -->
+    <input type="file" id="file-input-all" multiple accept="*/*" class="hidden-input">
+    <input type="file" id="file-input-gallery" multiple accept="image/*" class="hidden-input">
+
+    <!-- Área de Envio com opções claras para Celular e Computador -->
     <section class="upload-section">
-      <input type="file" id="file-input" multiple accept="image/*, .heic, .HEIC, .heif, .HEIF, .webp, .WEBP" class="hidden-input">
-      
       <div id="drop-zone" class="drop-zone">
-        <div class="drop-content">
-          <div class="drop-icon">✨</div>
-          <h2>Toque aqui para escolher as fotos</h2>
-          <p class="drop-hint">(Ou arraste as fotos para cá no computador)</p>
-          <span class="badge-compat">Aceita fotos de iPhone (.HEIC), Android, WhatsApp e câmeras</span>
+        <div class="drop-icon">✨</div>
+        <h2 class="drop-title">Como deseja escolher as fotos?</h2>
+        
+        <div class="picker-buttons-grid">
+          <!-- Botão 1: Arquivos / WhatsApp / Downloads (Resolve o problema de fotos que a galeria não mostra!) -->
+          <button type="button" id="btn-pick-files" class="picker-btn picker-btn-highlight">
+            <span class="picker-btn-icon">📁</span>
+            <div class="picker-btn-text">
+              <strong>Arquivos / WhatsApp / Downloads</strong>
+              <small>Recomendado para fotos de iPhone (.HEIC) e fotos recebidas</small>
+            </div>
+          </button>
+
+          <!-- Botão 2: Galeria normal do celular -->
+          <button type="button" id="btn-pick-gallery" class="picker-btn">
+            <span class="picker-btn-icon">🖼️</span>
+            <div class="picker-btn-text">
+              <strong>Galeria de Fotos</strong>
+              <small>Para fotos comuns salvas na sua galeria</small>
+            </div>
+          </button>
         </div>
+
+        <p class="drop-hint">(No computador, você também pode simplesmente arrastar as fotos para cá)</p>
       </div>
     </section>
 
@@ -137,7 +157,7 @@
     <!-- Rodapé de Segurança e Conforto -->
     <footer class="app-footer">
       <div class="security-badge">
-        <span>🔒 <strong>100% Seguro e Privado:</strong> Suas fotos são tratadas diretamente dentro do seu aparelho. Nenhuma foto é enviada para a internet.</span>
+        <span>🔒 <strong>100% Seguro e Privado:</strong> Suas fotos são tratadas diretamente no seu aparelho. Nenhuma foto é enviada para a internet.</span>
       </div>
     </footer>
   </main>
