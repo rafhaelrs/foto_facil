@@ -55,7 +55,20 @@ jobs:
           cd android
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace > build.log 2>&1 || (cat build.log >> $GITHUB_STEP_SUMMARY && cat build.log && exit 1)
+          ./gradlew assembleDebug --stacktrace > build.log 2>&1 || {
+            echo "--- ERRO DE COMPILACAO ---"
+            cat build.log
+            cat build.log >> $GITHUB_STEP_SUMMARY
+            git config --global user.name "GitHub Actions"
+            git config --global user.email "actions@github.com"
+            git checkout -B build-error-log
+            cp build.log ../build-error.txt
+            cd ..
+            git add build-error.txt
+            git commit -m "Log do erro de compilacao" || true
+            git push origin build-error-log --force || true
+            exit 1
+          }
           cat build.log >> $GITHUB_STEP_SUMMARY
 
       - name: Localizar e organizar arquivo APK
