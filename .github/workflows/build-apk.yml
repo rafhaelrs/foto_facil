@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,8 +22,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Aceitar licenças do Android SDK
+      - name: Instalar e configurar Android SDK 34
         run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" || true
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Baixar bibliotecas locais para funcionamento 100% Offline
@@ -51,7 +55,8 @@ jobs:
           cd android
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace > build.log 2>&1 || (cat build.log >> $GITHUB_STEP_SUMMARY && cat build.log && exit 1)
+          cat build.log >> $GITHUB_STEP_SUMMARY
 
       - name: Localizar e organizar arquivo APK
         run: |
@@ -59,9 +64,18 @@ jobs:
           find android -name "*.apk" -exec cp {} apk_dist/SaraFotoFacil.apk \;
           ls -lh apk_dist/
 
-      - name: Publicar o APK pronto para Download
+      - name: Publicar o APK pronto para Download (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: SaraFotoFacil-Instalador
           path: apk_dist/SaraFotoFacil.apk
           if-no-files-found: error
+
+      - name: Publicar Link Direto de Download (Release)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete v1.0.0 --yes || true
+          git tag -d v1.0.0 || true
+          git push origin :refs/tags/v1.0.0 || true
+          gh release create v1.0.0 apk_dist/SaraFotoFacil.apk --title "Sara Foto Fácil v1.0 (APK)" --notes "Baixe o arquivo SaraFotoFacil.apk para instalar diretamente no celular." || true
