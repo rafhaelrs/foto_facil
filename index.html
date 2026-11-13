@@ -16,23 +16,47 @@
 
   <title>Sara Foto Fácil - Conversor de Fotos</title>
 
-  <!-- Bibliotecas externas para suporte completo a HEIC e download em ZIP -->
+  <!-- Bibliotecas externas para suporte a HEIC e download em ZIP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
-  <!-- Banner de Instalação PWA -->
-  <div id="install-banner" class="install-banner hidden">
+  <!-- Banner Inteligente de Instalação PWA (Fica visível sempre que aberto no navegador) -->
+  <div id="install-banner" class="install-banner">
     <div class="install-info">
       <span class="install-icon">📲</span>
       <div>
         <strong>Instalar Aplicativo</strong>
-        <p>Coloque o ícone na sua tela para abrir com 1 toque!</p>
+        <p>Acesse direto pelo ícone na tela sem precisar de link!</p>
       </div>
     </div>
     <button id="btn-install" class="btn-install-action">Instalar</button>
+  </div>
+
+  <!-- Modal com Dica de Instalação (se o navegador bloquear o clique direto) -->
+  <div id="install-modal" class="install-modal hidden">
+    <div class="install-modal-content">
+      <div class="modal-header">
+        <h3>Como Instalar o Aplicativo</h3>
+        <button id="close-modal" class="btn-close-sm">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Como você está usando pelo navegador, faça o seguinte para colocar o ícone na tela:</p>
+        <div class="install-steps">
+          <div class="step-item">
+            <span class="step-num">1</span>
+            <span>Toque no menu de <strong>3 pontinhos (⋮)</strong> no canto superior do seu navegador.</span>
+          </div>
+          <div class="step-item">
+            <span class="step-num">2</span>
+            <span>Selecione <strong>"Instalar aplicativo"</strong> ou <strong>"Adicionar à tela inicial"</strong>.</span>
+          </div>
+        </div>
+      </div>
+      <button id="btn-modal-ok" class="btn-primary" style="margin-top: 14px; width: 100%;">Entendi!</button>
+    </div>
   </div>
 
   <!-- Instrução para iPhone / Safari -->
@@ -67,7 +91,7 @@
         <h2 class="drop-title">Como deseja escolher as fotos?</h2>
         
         <div class="picker-buttons-grid">
-          <!-- Botão 1: Arquivos / WhatsApp / Downloads (Resolve o problema de fotos que a galeria não mostra!) -->
+          <!-- Botão 1: Arquivos / WhatsApp / Downloads -->
           <button type="button" id="btn-pick-files" class="picker-btn picker-btn-highlight">
             <span class="picker-btn-icon">📁</span>
             <div class="picker-btn-text">
@@ -76,7 +100,7 @@
             </div>
           </button>
 
-          <!-- Botão 2: Galeria normal do celular -->
+          <!-- Botão 2: Galeria convencional -->
           <button type="button" id="btn-pick-gallery" class="picker-btn">
             <span class="picker-btn-icon">🖼️</span>
             <div class="picker-btn-text">
@@ -162,6 +186,6 @@
     </footer>
   </main>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
-const CACHE_NAME = 'sara-foto-facil-v1';
+const CACHE_NAME = 'sara-foto-facil-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
+  './style.css?v=2',
+  './app.js?v=2',
   './manifest.json',
   './icons/icon.svg',
   './icons/icon-192.png',
@@ -12,55 +12,63 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'
 ];
 
-// Instalação: baixa e guarda todos os arquivos no cache
+// Instalação: ativa imediatamente sem esperar fechar todas as abas
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Sara Foto Fácil: Guardando arquivos no cache para uso offline...');
+      console.log('Sara Foto Fácil: Atualizando cache para versão 2...');
       return cache.addAll(ASSETS_TO_CACHE).catch(err => {
-        console.warn('Alguns arquivos externos não puderam ser cacheados imediatamente:', err);
+        console.warn('Cache parcial de arquivos externos:', err);
       });
     })
   );
-  self.skipWaiting();
 });
 
-// Ativação: limpa versões antigas do cache se houver
+// Ativação: apaga imediatamente caches antigos (v1)
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(
         keyList.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('Sara Foto Fácil: Removendo cache antigo:', key);
+            console.log('Sara Foto Fácil: Apagando versão antiga do cache:', key);
             return caches.delete(key);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Interceptação de requisições: Cache First (rápido e offline) com fallback para rede
+// Estratégia inteligente: Network First (Tenta pegar a versão nova da internet primeiro)
+// Se estiver sem internet, usa a versão guardada no cache!
 self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(e.request).then((networkResponse) => {
-        // Se a requisição for válida, podemos guardar no cache dinâmico
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(e.request, responseToCache);
+  // Para requisições da página (HTML/navegação), sempre busca a versão mais recente da rede
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, networkResponse.clone());
+            return networkResponse;
           });
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Para outros arquivos: tenta rede primeiro, fallback para cache
+  e.respondWith(
+    fetch(e.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const resClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
         }
         return networkResponse;
-      }).catch(() => {
-        // Em caso de falha de conexão e sem cache, apenas retorna erro padrão
-      });
-    })
+      })
+      .catch(() => caches.match(e.request))
   );
 });

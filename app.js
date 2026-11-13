@@ -1,11 +1,11 @@
 /**
- * Sara Foto Fácil - Lógica Principal Atualizada
- * Foco em simplicidade, leveza e suporte completo a arquivos recebidos por WhatsApp/Downloads/HEIC.
+ * Sara Foto Fácil - Lógica Principal (Versão 2)
+ * Suporte aprimorado para instalação manual, limpeza de cache e seleção via WhatsApp/Downloads.
  */
 
 // Estado da Aplicação
 const state = {
-  files: [], // Array de { id, file, name, ext, originalSize, convertedBlob, convertedUrl, status, error }
+  files: [],
   outputFormat: 'image/jpeg',
   outputExt: 'jpg',
   quality: 0.92,
@@ -33,42 +33,58 @@ const progressText = document.getElementById('progress-text');
 const downloadAllContainer = document.getElementById('download-all-container');
 const btnDownloadZip = document.getElementById('btn-download-zip');
 const formatCards = document.querySelectorAll('.format-card');
+
 const installBanner = document.getElementById('install-banner');
 const btnInstall = document.getElementById('btn-install');
+const installModal = document.getElementById('install-modal');
+const closeModal = document.getElementById('close-modal');
+const btnModalOk = document.getElementById('btn-modal-ok');
 const iosGuide = document.getElementById('ios-guide');
 const closeIosGuide = document.getElementById('close-ios-guide');
 
 // ========================================================
-// 1. Inicialização e PWA (Instalação no celular e notebook)
+// 1. Inicialização e Instalação PWA Inteligente
 // ========================================================
 
 let deferredPrompt = null;
+const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+// Se já estiver rodando dentro do aplicativo instalado, esconde o banner
+if (isStandalone && installBanner) {
+  installBanner.classList.add('hidden');
+}
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  if (installBanner) {
+  if (!isStandalone && installBanner) {
     installBanner.classList.remove('hidden');
   }
 });
 
 if (btnInstall) {
   btnInstall.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      if (installBanner) installBanner.classList.add('hidden');
+    // Se o navegador liberou o prompt nativo:
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        if (installBanner) installBanner.classList.add('hidden');
+      }
+      deferredPrompt = null;
+    } else {
+      // Se o navegador está em cooldown ou for outro navegador, abre as instruções passo a passo
+      if (installModal) installModal.classList.remove('hidden');
     }
-    deferredPrompt = null;
   });
 }
 
-// Guia suave para iPhone / iPad
+if (closeModal) closeModal.addEventListener('click', () => installModal.classList.add('hidden'));
+if (btnModalOk) btnModalOk.addEventListener('click', () => installModal.classList.add('hidden'));
+
+// Guia suave para iPhone / Safari
 function checkIosGuide() {
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-  
   if (isIos && !isStandalone && iosGuide) {
     if (!sessionStorage.getItem('iosGuideDismissed')) {
       iosGuide.classList.remove('hidden');
@@ -83,12 +99,15 @@ if (closeIosGuide) {
   });
 }
 
-// Registro do Service Worker
+// Registro e atualização do Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Sara Foto Fácil: Modo Offline Ativo'))
-      .catch((err) => console.log('Service Worker erro:', err));
+      .then((reg) => {
+        // Força checagem de nova versão no servidor
+        reg.update();
+      })
+      .catch((err) => console.log('Service Worker aviso:', err));
   });
 }
 
@@ -98,7 +117,6 @@ checkIosGuide();
 // 2. Seleção de Fotos (Arquivos vs Galeria vs Arrastar)
 // ========================================================
 
-// Botão 1: Arquivos / WhatsApp / Downloads (Abre o gerenciador completo onde fotos HEIC e documentos aparecem sem filtro)
 if (btnPickFiles) {
   btnPickFiles.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -106,7 +124,6 @@ if (btnPickFiles) {
   });
 }
 
-// Botão 2: Galeria convencional
 if (btnPickGallery) {
   btnPickGallery.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -114,14 +131,12 @@ if (btnPickGallery) {
   });
 }
 
-// Botão "+ Adicionar mais fotos"
 if (btnAddMore) {
   btnAddMore.addEventListener('click', () => {
     fileInputAll.click();
   });
 }
 
-// Escuta os dois inputs
 fileInputAll.addEventListener('change', (e) => {
   handleFiles(e.target.files);
   fileInputAll.value = '';
@@ -132,7 +147,6 @@ fileInputGallery.addEventListener('change', (e) => {
   fileInputGallery.value = '';
 });
 
-// Suporte a Arrastar e Soltar (Computador)
 ['dragenter', 'dragover'].forEach(eventName => {
   dropZone.addEventListener(eventName, (e) => {
     e.preventDefault();
@@ -156,10 +170,6 @@ dropZone.addEventListener('drop', (e) => {
   }
 });
 
-/**
- * Trata os arquivos selecionados garantindo que formatos não indexados
- * pela galeria (como HEIC no Android) sejam aceitos normalmente!
- */
 function handleFiles(fileList) {
   if (!fileList || fileList.length === 0) return;
 
@@ -296,7 +306,6 @@ formatCards.forEach(card => {
   });
 });
 
-// Limpar lista
 btnClear.addEventListener('click', () => {
   state.files.forEach(f => {
     if (f.convertedUrl) URL.revokeObjectURL(f.convertedUrl);
@@ -306,7 +315,7 @@ btnClear.addEventListener('click', () => {
 });
 
 // ========================================================
-// 5. Motor de Conversão Suave
+// 5. Motor de Conversão
 // ========================================================
 
 btnConvertAll.addEventListener('click', async () => {
@@ -368,15 +377,11 @@ function updateSingleCard(item) {
   existingCard.replaceWith(newCard);
 }
 
-/**
- * Converte um arquivo de imagem para JPG ou PNG
- */
 async function convertImage(file, targetMime, quality) {
   const ext = getExtension(file.name).toLowerCase();
   const isHeic = ext === 'heic' || ext === 'heif' || 
                  (file.type && (file.type.includes('heic') || file.type.includes('heif')));
 
-  // Caso 1: HEIC / HEIF
   if (isHeic) {
     if (typeof heic2any !== 'function') {
       throw new Error('A biblioteca de HEIC ainda está carregando.');
@@ -394,7 +399,6 @@ async function convertImage(file, targetMime, quality) {
     return conversionResult;
   }
 
-  // Caso 2: Outros formatos (JPG, PNG, WebP, etc.)
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
