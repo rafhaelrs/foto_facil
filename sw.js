@@ -1,23 +1,23 @@
-const CACHE_NAME = 'sara-foto-facil-v2';
+const CACHE_NAME = 'sara-foto-facil-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './style.css?v=2',
-  './app.js?v=2',
+  './style.css?v=3',
+  './app.js?v=3',
   './manifest.json',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+  'https://cdn.jsdelivr.net/npm/libheif-js@1.23.5/libheif-wasm/libheif-bundle.js',
   'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'
 ];
 
-// Instalação: ativa imediatamente sem esperar fechar todas as abas
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Sara Foto Fácil: Atualizando cache para versão 2...');
+      console.log('Sara Foto Fácil: Atualizando cache para versão 3...');
       return cache.addAll(ASSETS_TO_CACHE).catch(err => {
         console.warn('Cache parcial de arquivos externos:', err);
       });
@@ -25,7 +25,6 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Ativação: apaga imediatamente caches antigos (v1)
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keyList) => {
@@ -41,10 +40,7 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Estratégia inteligente: Network First (Tenta pegar a versão nova da internet primeiro)
-// Se estiver sem internet, usa a versão guardada no cache!
 self.addEventListener('fetch', (e) => {
-  // Para requisições da página (HTML/navegação), sempre busca a versão mais recente da rede
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)
@@ -59,7 +55,6 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Para outros arquivos: tenta rede primeiro, fallback para cache
   e.respondWith(
     fetch(e.request)
       .then((networkResponse) => {

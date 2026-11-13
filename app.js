@@ -1,6 +1,6 @@
 /**
- * Sara Foto Fácil - Lógica Principal (Versão 2)
- * Suporte aprimorado para instalação manual, limpeza de cache e seleção via WhatsApp/Downloads.
+ * Sara Foto Fácil - Lógica Principal (Versão 3)
+ * Suporte nativo a fotos em Modo Retrato, HDR (Tone Map) e containers com múltiplas camadas.
  */
 
 // Estado da Aplicação
@@ -49,7 +49,6 @@ const closeIosGuide = document.getElementById('close-ios-guide');
 let deferredPrompt = null;
 const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
-// Se já estiver rodando dentro do aplicativo instalado, esconde o banner
 if (isStandalone && installBanner) {
   installBanner.classList.add('hidden');
 }
@@ -64,7 +63,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 if (btnInstall) {
   btnInstall.addEventListener('click', async () => {
-    // Se o navegador liberou o prompt nativo:
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
@@ -73,7 +71,6 @@ if (btnInstall) {
       }
       deferredPrompt = null;
     } else {
-      // Se o navegador está em cooldown ou for outro navegador, abre as instruções passo a passo
       if (installModal) installModal.classList.remove('hidden');
     }
   });
@@ -82,7 +79,6 @@ if (btnInstall) {
 if (closeModal) closeModal.addEventListener('click', () => installModal.classList.add('hidden'));
 if (btnModalOk) btnModalOk.addEventListener('click', () => installModal.classList.add('hidden'));
 
-// Guia suave para iPhone / Safari
 function checkIosGuide() {
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   if (isIos && !isStandalone && iosGuide) {
@@ -99,14 +95,10 @@ if (closeIosGuide) {
   });
 }
 
-// Registro e atualização do Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then((reg) => {
-        // Força checagem de nova versão no servidor
-        reg.update();
-      })
+      .then((reg) => reg.update())
       .catch((err) => console.log('Service Worker aviso:', err));
   });
 }
@@ -264,7 +256,7 @@ function createPhotoCard(item) {
     statusBadgeHtml = `<span class="photo-status-badge status-done">✓ Pronta</span>`;
     actionHtml = `<button class="btn-item-download" onclick="downloadSingle('${item.id}')">Baixar</button>`;
   } else if (item.status === 'error') {
-    statusBadgeHtml = `<span class="photo-status-badge status-error">Erro</span>`;
+    statusBadgeHtml = `<span class="photo-status-badge status-error" title="${item.error || 'Erro'}">Erro</span>`;
   }
 
   let previewHtml = `<div class="photo-preview">🖼️</div>`;
@@ -315,7 +307,7 @@ btnClear.addEventListener('click', () => {
 });
 
 // ========================================================
-// 5. Motor de Conversão
+// 5. Motor de Conversão com Suporte Robusto a HDR e Retrato
 // ========================================================
 
 btnConvertAll.addEventListener('click', async () => {
@@ -347,7 +339,7 @@ btnConvertAll.addEventListener('click', async () => {
     } catch (err) {
       console.error('Erro ao converter foto:', item.name, err);
       item.status = 'error';
-      item.error = err.message;
+      item.error = err.message || 'Erro de leitura';
     }
 
     completed++;
@@ -357,7 +349,7 @@ btnConvertAll.addEventListener('click', async () => {
   }
 
   progressBarFill.style.width = '100%';
-  progressText.textContent = `Tudo pronto! ${completed} foto(s) convertida(s).`;
+  progressText.textContent = `Tudo pronto! ${completed} foto(s) processada(s).`;
   state.isConverting = false;
   btnConvertAll.disabled = false;
   convertBtnText.textContent = 'Converter Fotos';
@@ -377,28 +369,94 @@ function updateSingleCard(item) {
   existingCard.replaceWith(newCard);
 }
 
+/**
+ * Converte qualquer foto (inclusive HEIC com Modo Retrato e HDR Tone Map)
+ */
 async function convertImage(file, targetMime, quality) {
   const ext = getExtension(file.name).toLowerCase();
   const isHeic = ext === 'heic' || ext === 'heif' || 
                  (file.type && (file.type.includes('heic') || file.type.includes('heif')));
 
   if (isHeic) {
-    if (typeof heic2any !== 'function') {
-      throw new Error('A biblioteca de HEIC ainda está carregando.');
+    // Tentativa 1: LibHEIF moderno (suporta containers complexos do iPhone: Tone Map, Gain Map, Modo Retrato)
+    if (typeof libheif !== 'undefined' && typeof libheif.HeifDecoder === 'function') {
+      try {
+        const buffer = await file.arrayBuffer();
+        const decoder = new libheif.HeifDecoder();
+        const data = decoder.decode(new Uint8Array(buffer));
+
+        if (data && data.length > 0) {
+          const image = data[0]; // Foto principal
+          const width = image.get_width();
+          const height = image.get_height();
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          const imageData = ctx.createImageData(width, height);
+
+          await new Promise((resolve, reject) => {
+            image.display(imageData, (displayData) => {
+              if (!displayData) return reject(new Error('Falha ao renderizar pixels'));
+              resolve(displayData);
+            });
+          });
+
+          ctx.putImageData(imageData, 0, 0);
+
+          if (typeof image.free === 'function') {
+            try { image.free(); } catch (e) {}
+          }
+
+          const blobResult = await new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error('Falha ao gerar imagem'));
+            }, targetMime, quality);
+          });
+
+          if (blobResult) return blobResult;
+        }
+      } catch (errLibHeif) {
+        console.warn('libheif falhou, tentando fallback heic2any com multiple: true:', errLibHeif);
+      }
     }
 
-    const conversionResult = await heic2any({
-      blob: file,
-      toType: targetMime,
-      quality: quality
-    });
+    // Tentativa 2: heic2any com multiple: true (CRUCIAL para fotos com múltiplas camadas/Live/HDR)
+    if (typeof heic2any === 'function') {
+      try {
+        const conversionResult = await heic2any({
+          blob: file,
+          toType: targetMime,
+          quality: quality,
+          multiple: true // Permite desempacotar containers com fotos adicionais ou metadados de profundidade
+        });
 
-    if (Array.isArray(conversionResult)) {
-      return conversionResult[0];
+        if (Array.isArray(conversionResult)) {
+          return conversionResult[0]; // Pega a foto principal
+        }
+        return conversionResult;
+      } catch (errHeic2AnyMulti) {
+        // Tentativa de emergência com multiple: false
+        try {
+          const singleResult = await heic2any({
+            blob: file,
+            toType: targetMime,
+            quality: quality,
+            multiple: false
+          });
+          return Array.isArray(singleResult) ? singleResult[0] : singleResult;
+        } catch (innerErr) {
+          throw new Error('Esta foto possui um formato HDR/Retrato não suportado pelo navegador.');
+        }
+      }
     }
-    return conversionResult;
+
+    throw new Error('Bibliotecas de HEIC indisponíveis.');
   }
 
+  // Caso padrão: Outros formatos (JPG, PNG, WebP, etc.)
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);

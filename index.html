@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#4F46E5">
-  <meta name="description" content="Aplicativo simples e rápido para converter fotos para JPG e PNG. Ideal para fotos de alta qualidade e formato HEIC do iPhone.">
+  <meta name="description" content="Aplicativo simples e rápido para converter fotos para JPG e PNG. Ideal para fotos de alta qualidade, Modo Retrato e formato HEIC do iPhone.">
   
   <!-- Configurações para PWA / Mobile / iOS -->
   <link rel="manifest" href="manifest.json">
@@ -16,14 +16,15 @@
 
   <title>Sara Foto Fácil - Conversor de Fotos</title>
 
-  <!-- Bibliotecas externas para suporte a HEIC e download em ZIP -->
+  <!-- Bibliotecas externas para suporte completo a HEIC (incluindo Modo Retrato e HDR Tone Map) e ZIP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/libheif-js@1.23.5/libheif-wasm/libheif-bundle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
-  <!-- Banner Inteligente de Instalação PWA (Fica visível sempre que aberto no navegador) -->
+  <!-- Banner Inteligente de Instalação PWA -->
   <div id="install-banner" class="install-banner">
     <div class="install-info">
       <span class="install-icon">📲</span>
@@ -35,7 +36,7 @@
     <button id="btn-install" class="btn-install-action">Instalar</button>
   </div>
 
-  <!-- Modal com Dica de Instalação (se o navegador bloquear o clique direto) -->
+  <!-- Modal com Dica de Instalação -->
   <div id="install-modal" class="install-modal hidden">
     <div class="install-modal-content">
       <div class="modal-header">
@@ -43,11 +44,11 @@
         <button id="close-modal" class="btn-close-sm">✕</button>
       </div>
       <div class="modal-body">
-        <p>Como você está usando pelo navegador, faça o seguinte para colocar o ícone na tela:</p>
+        <p>Para colocar o ícone direto na sua tela:</p>
         <div class="install-steps">
           <div class="step-item">
             <span class="step-num">1</span>
-            <span>Toque no menu de <strong>3 pontinhos (⋮)</strong> no canto superior do seu navegador.</span>
+            <span>Toque no menu de <strong>3 pontinhos (⋮)</strong> no topo do seu navegador.</span>
           </div>
           <div class="step-item">
             <span class="step-num">2</span>
@@ -84,7 +85,7 @@
     <input type="file" id="file-input-all" multiple accept="*/*" class="hidden-input">
     <input type="file" id="file-input-gallery" multiple accept="image/*" class="hidden-input">
 
-    <!-- Área de Envio com opções claras para Celular e Computador -->
+    <!-- Área de Envio -->
     <section class="upload-section">
       <div id="drop-zone" class="drop-zone">
         <div class="drop-icon">✨</div>
@@ -96,7 +97,7 @@
             <span class="picker-btn-icon">📁</span>
             <div class="picker-btn-text">
               <strong>Arquivos / WhatsApp / Downloads</strong>
-              <small>Recomendado para fotos de iPhone (.HEIC) e fotos recebidas</small>
+              <small>Recomendado para fotos de iPhone (.HEIC), Modo Retrato e fotos recebidas</small>
             </div>
           </button>
 
@@ -186,6 +187,6 @@
     </footer>
   </main>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
