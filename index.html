@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4F46E5">
+  <meta name="description" content="Aplicativo simples e rápido para converter fotos para JPG e PNG. Ideal para fotos de alta qualidade e formato HEIC do iPhone.">
+  
+  <!-- Configurações para PWA / Mobile / iOS -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sara Foto Fácil">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+
+  <title>Sara Foto Fácil - Conversor de Fotos</title>
+
+  <!-- Bibliotecas externas para suporte completo a HEIC e download em ZIP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Banner de Instalação PWA (Aparece no celular ou notebook quando disponível) -->
+  <div id="install-banner" class="install-banner hidden">
+    <div class="install-info">
+      <span class="install-icon">📲</span>
+      <div>
+        <strong>Instalar Aplicativo</strong>
+        <p>Acesse direto pelo ícone na tela sem precisar de link!</p>
+      </div>
+    </div>
+    <button id="btn-install" class="btn-install-action">Instalar</button>
+  </div>
+
+  <!-- Instrução para iPhone / Safari -->
+  <div id="ios-guide" class="ios-guide hidden">
+    <div class="ios-guide-header">
+      <span>💡 <strong>Dica para iPhone:</strong></span>
+      <button id="close-ios-guide" class="btn-close-sm">✕</button>
+    </div>
+    <p>Para colocar o ícone na tela do celular: toque no botão <strong>Compartilhar</strong> (ícone <span class="share-icon-box">⎋</span>) na parte inferior e depois em <strong>"Adicionar à Tela de Início"</strong> (➕).</p>
+  </div>
+
+  <main class="app-container">
+    <!-- Cabeçalho -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">📸</div>
+        <div>
+          <h1 class="app-title">Sara Foto Fácil</h1>
+          <p class="app-subtitle">Transforme qualquer foto em JPG ou PNG sem esforço</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Área de Envio / Seleção -->
+    <section class="upload-section">
+      <input type="file" id="file-input" multiple accept="image/*, .heic, .HEIC, .heif, .HEIF, .webp, .WEBP" class="hidden-input">
+      
+      <div id="drop-zone" class="drop-zone">
+        <div class="drop-content">
+          <div class="drop-icon">✨</div>
+          <h2>Toque aqui para escolher as fotos</h2>
+          <p class="drop-hint">(Ou arraste as fotos para cá no computador)</p>
+          <span class="badge-compat">Aceita fotos de iPhone (.HEIC), Android, WhatsApp e câmeras</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Opções de Formato (Super claras e simples) -->
+    <section id="options-section" class="options-section hidden">
+      <div class="section-title">
+        <span>Passo 1: Escolha o Formato</span>
+      </div>
+      <div class="format-selector">
+        <label class="format-card selected" data-format="image/jpeg">
+          <input type="radio" name="format" value="image/jpeg" checked>
+          <div class="format-info">
+            <span class="format-name">.JPG</span>
+            <span class="format-desc">O mais usado, leve e abre em qualquer lugar</span>
+          </div>
+          <span class="check-mark">✓</span>
+        </label>
+
+        <label class="format-card" data-format="image/png">
+          <input type="radio" name="format" value="image/png">
+          <div class="format-info">
+            <span class="format-name">.PNG</span>
+            <span class="format-desc">Qualidade máxima e detalhes nítidos</span>
+          </div>
+          <span class="check-mark">✓</span>
+        </label>
+      </div>
+
+      <!-- Barra de Ação Principal -->
+      <div class="main-actions">
+        <button id="btn-convert-all" class="btn-primary">
+          <span class="btn-icon">⚡</span>
+          <span id="convert-btn-text">Converter Fotos</span>
+        </button>
+        <button id="btn-clear" class="btn-secondary" title="Limpar lista">
+          Limpar
+        </button>
+      </div>
+    </section>
+
+    <!-- Barra de Progresso Geral -->
+    <div id="global-progress" class="global-progress hidden">
+      <div class="progress-bar-bg">
+        <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+      </div>
+      <p id="progress-text" class="progress-text">Convertendo...</p>
+    </div>
+
+    <!-- Botão de Baixar Tudo em ZIP -->
+    <div id="download-all-container" class="download-all-container hidden">
+      <button id="btn-download-zip" class="btn-success">
+        <span>📦 Baixar Todas as Fotos Prontas (.ZIP)</span>
+      </button>
+    </div>
+
+    <!-- Lista de Fotos Adicionadas -->
+    <section id="photos-section" class="photos-section hidden">
+      <div class="photos-header">
+        <h3 id="photos-count-title">Fotos Selecionadas (0)</h3>
+        <button id="btn-add-more" class="btn-link">+ Adicionar mais fotos</button>
+      </div>
+
+      <div id="photos-list" class="photos-list">
+        <!-- Itens inseridos dinamicamente via app.js -->
+      </div>
+    </section>
+
+    <!-- Rodapé de Segurança e Conforto -->
+    <footer class="app-footer">
+      <div class="security-badge">
+        <span>🔒 <strong>100% Seguro e Privado:</strong> Suas fotos são tratadas diretamente dentro do seu aparelho. Nenhuma foto é enviada para a internet.</span>
+      </div>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
