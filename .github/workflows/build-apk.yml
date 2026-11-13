@@ -51,17 +51,17 @@ jobs:
           cd android
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee ../compilation.log
+          ./gradlew assembleDebug --stacktrace
 
-      - name: Salvar log de compilacao
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compilation-log
-          path: compilation.log
+      - name: Localizar e organizar arquivo APK
+        run: |
+          mkdir -p apk_dist
+          find android -name "*.apk" -exec cp {} apk_dist/SaraFotoFacil.apk \;
+          ls -lh apk_dist/
 
       - name: Publicar o APK pronto para Download
         uses: actions/upload-artifact@v4
         with:
           name: SaraFotoFacil-Instalador
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: apk_dist/SaraFotoFacil.apk
+          if-no-files-found: error
