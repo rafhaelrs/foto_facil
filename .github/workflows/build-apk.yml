@@ -42,13 +42,23 @@ jobs:
 
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+          cache-disabled: true
 
       - name: Gerar Wrapper e Compilar APK
         run: |
           cd android
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee ../compilation.log
+
+      - name: Salvar log de compilacao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compilation-log
+          path: compilation.log
 
       - name: Publicar o APK pronto para Download
         uses: actions/upload-artifact@v4
