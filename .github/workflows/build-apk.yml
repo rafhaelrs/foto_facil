@@ -19,9 +19,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Baixar bibliotecas locais para funcionamento 100% Offline
         run: |
           mkdir -p libs
@@ -38,6 +35,9 @@ jobs:
           cp manifest.json android/app/src/main/assets/
           cp -r icons android/app/src/main/assets/
           cp -r libs android/app/src/main/assets/
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Compilar o APK com Gradle
         run: |
