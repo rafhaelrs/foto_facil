@@ -543,6 +543,17 @@ btnDownloadZip.addEventListener('click', async () => {
 });
 
 function triggerDownload(blob, fileName) {
+  // Se estiver rodando dentro do app Android nativo (.apk):
+  if (window.AndroidApp && typeof window.AndroidApp.saveFile === 'function') {
+    const reader = new FileReader();
+    reader.onloadend = function() {
+      window.AndroidApp.saveFile(reader.result, fileName, blob.type || 'application/octet-stream');
+    };
+    reader.readAsDataURL(blob);
+    return;
+  }
+
+  // Se estiver rodando no navegador (Notebook ou Celular via link):
   const a = document.createElement('a');
   const url = URL.createObjectURL(blob);
   a.href = url;

@@ -1,0 +1,2 @@
+rootProject.name = "SaraFotoFacil"
+include ':app'
