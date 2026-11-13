@@ -36,10 +36,12 @@ jobs:
           cp -r icons android/app/src/main/assets/
           cp -r libs android/app/src/main/assets/
 
-      - name: Configurar Gradle
+      - name: Configurar Gradle 8.2
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
 
-      - name: Compilar o APK com Gradle
+      - name: Compilar o APK
         run: |
           cd android
           gradle assembleDebug --no-daemon
