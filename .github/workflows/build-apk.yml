@@ -89,6 +89,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete v1.0.0 --yes || true
-          git tag -d v1.0.0 || true
           git push origin :refs/tags/v1.0.0 || true
-          gh release create v1.0.0 apk_dist/SaraFotoFacil.apk --title "Sara Foto Fácil v1.0 (APK)" --notes "Baixe o arquivo SaraFotoFacil.apk para instalar diretamente no celular." || true
+          gh release create v1.0.0 apk_dist/SaraFotoFacil.apk --title "Sara Foto Fácil v1.0 (APK)" --notes "Baixe o arquivo SaraFotoFacil.apk para instalar diretamente no celular." --target main || true
